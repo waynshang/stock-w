@@ -1,0 +1,21 @@
+version: '3.4'
+
+services:
+  stock-w:
+    container_name: stock-w
+    image: stockw
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 8000:8000
+    command: gunicorn -w 1 -b :8000 app:app
+  # nginx:
+  #   container_name: nginx
+  #   restart: always
+  #   build: ./nginx
+  #   ports:
+  #     - "80:80"
+
+volumes:
+  stock-w:
