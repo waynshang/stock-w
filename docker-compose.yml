@@ -9,7 +9,12 @@ services:
       dockerfile: ./Dockerfile
     ports:
       - 8000:8000
-    command: gunicorn -w 1 -b :8000 app:app
+    command: gunicorn -w 1 -b :8000 app:app --reload
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_CONFIG=development
+
   # nginx:
   #   container_name: nginx
   #   restart: always
