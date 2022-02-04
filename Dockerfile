@@ -1,6 +1,7 @@
 # For more information, please refer to https://aka.ms/vscode-docker-python
 FROM python:3.8-slim as base
 COPY requirements.txt /requirements.txt
+RUN pip install --upgrade pip
 RUN pip install -r /requirements.txt
 
 FROM base

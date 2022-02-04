@@ -1,5 +1,7 @@
 # config.py
-
+# import mulitprocessing as mp
+# bind = "0.0.0.0:8000"
+# workers = mp.cpu_count() * 2 + 1
 class Config(object):
     """
     Common configurations
@@ -26,3 +28,4 @@ app_config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig
 }
+

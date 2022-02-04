@@ -14,6 +14,7 @@ services:
       - .:/app
     environment:
       - FLASK_CONFIG=development
+    restart: always
 
   # nginx:
   #   container_name: nginx
