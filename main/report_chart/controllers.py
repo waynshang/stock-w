@@ -40,6 +40,7 @@ def index():
 def show(ticker):
   DEBUG.info(ticker)
   global STATEMENTS_OPTIONS
+  global frequency
   frequency = request.args.get('frequency')
   frequency = frequency if frequency in FREQUENCY_OPTIONS else ANNUAL
   if frequency == ANNUAL: 
@@ -129,7 +130,11 @@ def get_date_value_dict(ticker_data, label):
     data = value[label_key] / value[label_value] * 100
   else: 
     data = value[label]
-  return {key[0:4]: data}
+  if frequency == ANNUAL:
+    key = key[0:4]
+  else:
+    key = key[0:7]
+  return {key: data}
 
 def draw_images(data):
   image_urls = []

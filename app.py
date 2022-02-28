@@ -1,5 +1,3 @@
-import debugger as dm
-DEBUG = dm.getLogger()
 import os
 from main.report_chart import report_chart
 from main import create_app
