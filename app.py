@@ -1,11 +1,10 @@
-from utils import getLogger
-DEBUG = getLogger()
+import debugger as dm
+DEBUG = dm.getLogger()
 import os
-from main.dcf import dcf
+from main.report_chart import report_chart
 from main import create_app
 
-config_name = os.getenv('FLASK_CONFIG')
-DEBUG.info(config_name)
+config_name = os.getenv('FLASK_CONFIG') or 'development'
 app = create_app(config_name)
 
 if __name__ == "__main__":

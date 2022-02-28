@@ -1,5 +1,5 @@
 import requests
-from utils import getLogger
+from debugger import getLogger
 
 DEBUG = getLogger()
 
