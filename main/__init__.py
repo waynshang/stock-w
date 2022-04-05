@@ -6,6 +6,7 @@ from flask import Flask
 # local imports
 from main.config import app_config
 from .report_chart import report_chart
+from .risk import risk
 
 
 def create_app(config_name):
@@ -20,4 +21,5 @@ def create_app(config_name):
     
     #register
     app.register_blueprint(report_chart, url_prefix='/report_chart', template_folder='templates')
+    app.register_blueprint(risk, url_prefix='/risk', template_folder='templates')
     return app
