@@ -19,7 +19,8 @@ import nasdaqdatalink
 from statistics import stdev , mean
 from math import sqrt
 
-from utils import get_keys, get_values, create_dict_from_variables
+from utils import init_db, create_folder, create_table, insert_values, update_values, select_values
+import os
 
 ANNUAL = 'annual'
 QUARTERLY = 'quarterly'
@@ -33,20 +34,24 @@ MONTHLY = 'monthly'
 FREQUENCY_OPTIONS = [DAILY, WEEKLY, MONTHLY]
 TEN_YEAR_BOND_YIELD = "FRED/DGS10"
 TRADING_DAY_A_YEAR =252
-DATE_FORMAT= "%Y-%M-%d"
+DATE_FORMAT= "%Y-%m-%d"
 
 def index():
-  global frequency
-  tickers =(request.args.get('tickers') or '').split(',')
-  frequency = request.args.get('frequency')
-  start_date = request.args.get('start_date') or (datetime.now() - timedelta(days=365)).strftime(DATE_FORMAT)
-  end_date = request.args.get('end_date') or (datetime.now()).strftime(DATE_FORMAT)
-  duration = request.args.get('duration') or ANNUAL
-  split_dates = _split_date(start_date, end_date, duration)
-  frequency = frequency if frequency in FREQUENCY_OPTIONS else DAILY
+  args = _get_request_args(request)
+  
 
   risk_datas = []
-  DEBUG.info(f"frequency: {frequency}")
+  DEBUG.info(f"frequency: {args['frequency']}")
+  db_name = "risk/risk.db"
+
+  create_folder(os.path.dirname(db_name))
+  connection = init_db(db_name)
+  connection.set_trace_callback(print)
+  cursor = connection.cursor()
+  _save_dgs10(connection, cursor,args["start_date"], args["end_date"])
+  split_dates = _split_date(args["start_date"], args["end_date"], args["duration"])
+
+
   for split_date in split_dates:
     start_date = split_date['start_date']
     end_date = split_date['end_date']
@@ -55,23 +60,24 @@ def index():
     DEBUG.info(f"end_date: {end_date}")
 
     risk_data = {'start_date': start_date, 'end_date': end_date}
-    risk_rate = mean(list(map(lambda x: x[1],(nasdaqdatalink.get("FRED/DGS10" , start_date=start_date, end_date=end_date, returns="numpy")))))
+    risk_rate = _get_risk_rate(connection, cursor, risk_data)
+    risk_data['risk_rate'] = risk_rate
 
-    for ticker in tickers:
+    for ticker in args["tickers"]:
       ticker = ticker.upper()
       yf_ticker = yf.Ticker(ticker)
       try:  
         info = yf_ticker.info
       except:
         DEBUG.error(f"invalid ticker: {ticker}")
-        tickers.remove(ticker)
+        args["tickers"].remove(ticker)
         # abort(404)
     
       try:
         yahoo_financials = YahooFinancials(ticker)
-        price_date = yahoo_financials.get_historical_price_data(start_date, end_date, frequency)
+        price_date = yahoo_financials.get_historical_price_data(start_date, end_date, args["frequency"])
         price_changes = _get_stock_price_change_history(ticker, price_date)
-        DEBUG.info(price_changes)
+        # DEBUG.info(price_changes)
         annual_revenue = mean(price_changes) * TRADING_DAY_A_YEAR * 100 if price_changes else 0
         stdev_per_annual = stdev(price_changes) * sqrt(TRADING_DAY_A_YEAR) * 100 if price_changes else 0
 
@@ -96,6 +102,23 @@ def index():
 
    
 #private
+def _get_request_args(request):
+  tickers =(request.args.get('tickers') or '').split(',')
+  frequency = request.args.get('frequency')
+  frequency = frequency if frequency in FREQUENCY_OPTIONS else DAILY
+  start_date = request.args.get('start_date') or (datetime.now() - timedelta(days=365)).strftime(DATE_FORMAT)
+  end_date = request.args.get('end_date') or (datetime.now()).strftime(DATE_FORMAT)
+  print(start_date)
+  print(end_date)
+  duration = request.args.get('duration') or ANNUAL
+  args = {
+    'tickers': tickers,
+    'frequency': frequency,
+    'duration': duration,
+    'end_date': end_date,
+    'start_date': start_date
+  }
+  return args
 
 def _get_stock_price_change_history(ticker, price_date, price_type = 'close'):
   if 'prices' not in price_date[ticker]:
@@ -132,6 +155,32 @@ def _split_date(start_date, end_date, duration = ANNUAL):
   split_days.append({'start_date': real_start_date, 'end_date': real_end_date})
   return split_days
 
+def _save_dgs10(connection, cursor, start_date, end_date):
+  table_name= 'dgs10'
+  columns = 'date DATE, value INTEGER NOT NULL'
+  print(start_date)
+  print(end_date)
+  risk_rate = nasdaqdatalink.get("FRED/DGS10" , start_date=start_date, end_date=end_date, returns="numpy")
+  new_risk_rate =[]
+  for rate in risk_rate:
+    temp = str(rate[0].astype(datetime))
+    temp = int(temp[0:10])
+    date = datetime.fromtimestamp(temp).strftime('%Y-%m-%d')
+    new_risk_rate.append((date, rate[1]))
 
+  create_table(connection, cursor, table_name, columns)
+  columns = "date, value"
+  numbers = "?, ?"
+  insert_values(connection, cursor, table_name, columns, numbers, new_risk_rate)
+
+def _get_risk_rate(connection, cursor, risk_date):
+  table_name = 'dgs10'
+  columns = 'AVG(value)'
+  start_date = risk_date['start_date']
+  end_date = risk_date['end_date']
+  where_condition = f"date between '{start_date}' and '{end_date}'"
+  risk_data = select_values(connection, cursor, table_name, columns, where_condition)
+  print(f"============risk_data: {risk_data}")
+  return risk_data[0] or 1
 
 

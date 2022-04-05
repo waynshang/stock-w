@@ -1,6 +1,7 @@
 import glob
 import shutil
-
+import os
+from .db import *
 def get_certain_format_files_from_path(path = './', format='csv'):
   result = glob.glob('{}*.{}'.format(path, format))
   return result
@@ -30,5 +31,12 @@ def create_dict_from_variables(keys, values):
   for index, key in enumerate(keys):
     d[key] = values[index]
   return d
+
+def create_folder( directory_name):
+  try:
+    os.stat(directory_name)
+  except:
+    os.mkdir(directory_name)
+
 
 
